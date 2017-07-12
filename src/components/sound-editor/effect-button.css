@@ -53,7 +53,7 @@ $arrow-thickness: 10px;
 	border-left: $arrow-thickness solid transparent;
 	border-right: $arrow-thickness solid transparent;
 	top: calc(-1 * $arrow-thickness);
-	left: 40px;
+	left: 50px;
 	margin-left: -$arrow-thickness;
     transform: rotate(180deg);
 }

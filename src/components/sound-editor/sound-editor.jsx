@@ -5,7 +5,7 @@ const Box = require('../box/box.jsx');
 const Waveform = require('../waveform/waveform.jsx');
 const BufferedInput = require('../buffered-input/buffered-input.jsx');
 const EffectButton = require('./effect-button.jsx');
-
+const AudioTrimmer = require('../../containers/audio-trimmer.jsx');
 const styles = require('./sound-editor.css');
 const formStyles = require('../../css/forms.css');
 
@@ -49,6 +49,13 @@ const SoundEditor = props => (
                     data={props.chunkLevels}
                     height={180}
                     width={600}
+                />
+                <AudioTrimmer
+                    playhead={props.playhead}
+                    trimEnd={props.trimEnd}
+                    trimStart={props.trimStart}
+                    onSetTrimEnd={props.onSetTrimEnd}
+                    onSetTrimStart={props.onSetTrimStart}
                 />
             </Box>
         </Box>

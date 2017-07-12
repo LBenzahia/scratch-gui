@@ -26,6 +26,10 @@ const getChunkLevels = (samples, chunkSize = 1024) => {
     return chunkLevels;
 };
 
+import SharedAudioContext from '../lib/audio/shared-audio-context.js';
+
+const audioCtx = new SharedAudioContext();
+
 class SoundEditor extends React.Component {
     constructor (props) {
         super(props);
@@ -39,10 +43,10 @@ class SoundEditor extends React.Component {
             'handleSubmitEffect',
             'handleUpdateEffect',
             'handleActivateEffect',
-            'playWithEffects',
             'handleActivateTrim',
             'handleUpdateTrimEnd',
-            'handleUpdateTrimStart'
+            'handleUpdateTrimStart',
+            'handleReverse'
         ]);
         this.state = {
             playhead: null, // null is not playing, [0 -> 1] is playing percent
@@ -52,15 +56,17 @@ class SoundEditor extends React.Component {
             echo: null,
             reverse: null,
             robot: null,
-            trim: null
+            trim: null,
+            trimStart: null,
+            trimEnd: null
         };
-        this.playWithEffects = debounce(this.playWithEffects, 200);
+        this.handlePlay = debounce(this.handlePlay, 200);
     }
     componentDidMount () {
         this.audioBufferPlayer = new AudioBufferPlayer(this.props.samples, this.props.sampleRate);
     }
     componentWillReceiveProps (newProps) {
-        if (newProps.soundIndex !== this.props.soundIndex) {
+        if (newProps.soundIndex !== this.props.soundIndex || newProps.samples !== this.props.samples) {
             this.audioBufferPlayer.stop();
             this.audioBufferPlayer = new AudioBufferPlayer(newProps.samples, newProps.sampleRate);
             this.setState({chunkLevels: getChunkLevels(newProps.samples)});
@@ -71,8 +77,8 @@ class SoundEditor extends React.Component {
     }
     handlePlay () {
         this.audioBufferPlayer.play(
-            0,
-            1,
+            this.state.trimStart || 0,
+            this.state.trimEnd || 1,
             this.handleUpdatePlayhead,
             this.handleStoppedPlaying);
     }
@@ -91,6 +97,21 @@ class SoundEditor extends React.Component {
     }
     handleSubmitEffect () {
         // apply effects
+        console.log('submit!')
+        this.handleStopPlaying();
+        const vm = this.props.vm;
+        const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
+        const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
+        const samples = buffer.getChannelData(0);
+        const sampleCount = samples.length;
+        const clippedSamples = samples.reverse()
+        const newBuffer = audioCtx.createBuffer(1, clippedSamples.length, this.props.sampleRate);
+        // newBuffer.playbackRate.value = this.state.chipmunk || this.state.monster || this.state.echo || this.state.robot || 0;
+
+        newBuffer.getChannelData(0).set(clippedSamples);
+        vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
+        vm.runtime.requestTargetsUpdate(vm.editingTarget);
+        this.handleCancelEffect();
         this.handleCancelEffect();
     }
     handleCancelEffect () {
@@ -100,20 +121,58 @@ class SoundEditor extends React.Component {
             echo: null,
             reverse: null,
             robot: null,
-            trim: null
+            trim: null,
+            trimStart: null,
+            trimEnd: null
         });
     }
     handleActivateEffect (effect) {
         this.handleCancelEffect();
-        this.setState({[effect]: this.state[effect] === null ? 0 : null});
+        this.setState({[effect]: this.state[effect] === null ? 0.25 : null});
     }
     handleUpdateEffect (effect) {
         // Preview sound with effect?
         this.setState(effect);
-        this.playWithEffects();
-    }
-    playWithEffects () {
         this.handlePlay();
+    }
+    handleActivateTrim () {
+        if (this.state.trimStart === null && this.state.trimEnd === null) {
+            this.handleCancelEffect();
+            this.setState({trimEnd: 0.9, trimStart: 0.1, trim: true});
+        } else {
+            const vm = this.props.vm;
+            const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
+            const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
+            const samples = buffer.getChannelData(0);
+            const sampleCount = samples.length;
+            const startIndex = Math.floor(this.state.trimStart * sampleCount);
+            const endIndex = Math.floor(this.state.trimEnd * sampleCount);
+            const clippedSamples = samples.slice(startIndex, endIndex);
+            const newBuffer = audioCtx.createBuffer(1, clippedSamples.length, this.props.sampleRate);
+            newBuffer.getChannelData(0).set(clippedSamples);
+            vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
+            vm.runtime.requestTargetsUpdate(vm.editingTarget);
+            this.handleCancelEffect();
+        }
+    }
+    handleUpdateTrimEnd (trimEnd) {
+        this.setState({trimEnd});
+    }
+    handleUpdateTrimStart (trimStart) {
+        this.setState({trimStart});
+    }
+    handleReverse () {
+        const vm = this.props.vm;
+        const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
+        const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
+        const samples = buffer.getChannelData(0);
+        const sampleCount = samples.length;
+        const clippedSamples = samples.reverse()
+        const newBuffer = audioCtx.createBuffer(1, clippedSamples.length, this.props.sampleRate);
+        newBuffer.getChannelData(0).set(clippedSamples);
+        vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
+        vm.runtime.requestTargetsUpdate(vm.editingTarget);
+        this.handleCancelEffect();
     }
     render () {
         return (
@@ -151,17 +210,6 @@ class SoundEditor extends React.Component {
                         onCancel: this.handleCancelEffect
                     },
                     {
-                        name: 'Reverse',
-                        value: this.state.reverse,
-                        active: this.state.reverse !== null,
-                        icon: reverseIcon,
-                        isAdjustable: false,
-                        onActivate: () => this.handleActivateEffect('reverse'),
-                        onChange: e => this.handleUpdateEffect({reverse: Number(e.target.value)}),
-                        onSubmit: this.handleSubmitEffect,
-                        onCancel: this.handleCancelEffect
-                    },
-                    {
                         name: 'Robot',
                         value: this.state.robot,
                         active: this.state.robot !== null,
@@ -172,16 +220,27 @@ class SoundEditor extends React.Component {
                         onCancel: this.handleCancelEffect
                     },
                     {
-                        name: 'Trim',
-                        value: this.state.trim,
-                        active: this.state.trim !== null,
-                        icon: trimIcon,
+                        name: 'Reverse',
+                        value: this.state.reverse,
+                        active: this.state.reverse !== null,
+                        icon: reverseIcon,
                         isAdjustable: false,
-                        onActivate: () => this.handleActivateEffect('trim'),
-                        onChange: e => this.handleUpdateEffect({trim: Number(e.target.value)}),
+                        onActivate: this.handleReverse,
+                        onChange: e => this.handleUpdateEffect({reverse: Number(e.target.value)}),
                         onSubmit: this.handleSubmitEffect,
                         onCancel: this.handleCancelEffect
-                    }
+                    },
+                    // {
+                    //     name: 'Trim',
+                    //     value: this.state.trim,
+                    //     active: this.state.trim !== null,
+                    //     icon: trimIcon,
+                    //     isAdjustable: false,
+                    //     onActivate: this.handleActivateTrim,
+                    //     onChange: e => this.handleUpdateEffect({trim: Number(e.target.value)}),
+                    //     onSubmit: this.handleActivateTrim,
+                    //     onCancel: this.handleCancelEffect
+                    // }
                 ]}
                 name={this.props.name}
                 playhead={this.state.playhead}
@@ -192,7 +251,9 @@ class SoundEditor extends React.Component {
                 onSetTrimEnd={this.handleUpdateTrimEnd}
                 onSetTrimStart={this.handleUpdateTrimStart}
                 onStop={this.handleStopPlaying}
-                onTrim={this.handleActivateTrim}
+                onSetTrimStart={this.handleUpdateTrimStart}
+                onSetTrimEnd={this.handleUpdateTrimEnd}
+                onActiveTrim={this.handleActivateTrim}
             />
         );
     }
@@ -213,6 +274,7 @@ const mapStateToProps = (state, {soundIndex}) => {
         sampleRate: audioBuffer.sampleRate,
         samples: audioBuffer.getChannelData(0),
         name: sound.name,
+        vm: state.vm,
         onRenameSound: state.vm.renameSound.bind(state.vm)
     };
 };
