@@ -4,6 +4,7 @@ const classNames = require('classnames');
 const Box = require('../box/box.jsx');
 const Waveform = require('../waveform/waveform.jsx');
 const BufferedInput = require('../buffered-input/buffered-input.jsx');
+const EffectButton = require('./effect-button.jsx');
 
 const styles = require('./sound-editor.css');
 const formStyles = require('../../css/forms.css');
@@ -51,11 +52,20 @@ const SoundEditor = props => (
                 />
             </Box>
         </Box>
+        <Box className={styles.row}>
+            {props.effects.map((effectProps, index) => (
+                <EffectButton
+                    key={index}
+                    {...effectProps}
+                />
+            ))}
+        </Box>
     </Box>
 );
 
 SoundEditor.propTypes = {
     chunkLevels: PropTypes.arrayOf(PropTypes.number).isRequired,
+    effects: PropTypes.arrayOf(PropTypes.shape(EffectButton.propTypes)),
     name: PropTypes.string.isRequired,
     onChangeName: PropTypes.func.isRequired,
     onPlay: PropTypes.func.isRequired,
