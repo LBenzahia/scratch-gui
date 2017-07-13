@@ -11,6 +11,9 @@ const formStyles = require('../../css/forms.css');
 
 const playIcon = require('../record-modal/icon--play.svg');
 const stopIcon = require('../record-modal/icon--stop-playback.svg');
+const trimIcon = require('./icon--trim.svg');
+const undoIcon = require('./icon--undo.svg');
+const redoIcon = require('./icon--redo.svg');
 
 const SoundEditor = props => (
     <Box className={styles.editorContainer}>
@@ -41,6 +44,36 @@ const SoundEditor = props => (
                     value={props.name}
                     onSubmit={props.onChangeName}
                 />
+            </Box>
+            <Box className={styles.inputGroupRight}>
+                <button
+                    className={classNames(styles.button, styles.trimButton, {
+                        [styles.trimButtonActive]: props.trimStart !== null
+                    })}
+                    onClick={props.onActiveTrim}
+                >
+                    <img src={trimIcon} />
+                    {props.trimStart === null ? 'Trim' : 'Save'}
+                </button>
+                <Box className={styles.inputGroup}>
+                    <Box className={styles.buttonGroup}>
+                        <button
+                            className={styles.button}
+                            onClick={props.onUndo}
+                            disabled={!props.canUndo()}
+                        >
+                            <img src={undoIcon} />
+                        </button>
+                        <button
+                            className={styles.button}
+                            onClick={props.onRedo}
+                            disabled={!props.canRedo()}
+
+                        >
+                            <img src={redoIcon} />
+                        </button>
+                    </Box>
+                </Box>
             </Box>
         </Box>
         <Box className={styles.row}>

@@ -37,6 +37,8 @@ class EffectButton extends React.Component {
                 this.props.onSubmit();
             }
         }
+        e.preventDefault();
+        e.stopPropagation();
     }
     render () {
         return (
