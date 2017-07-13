@@ -10,10 +10,11 @@ class AudioEffects {
 
         const echoExtra = echo * 4 * sampleRate;
         this.playbackStretch = pitch;
-        console.log(pitch)
         this.echo = echo;
         this.distort = distort;
-        this.audioContext = new OfflineAudioContext(1, (1 / this.playbackStretch) * (samples.length + echoExtra), sampleRate);
+        this.audioContext = new OfflineAudioContext(1,
+            (1 / this.playbackStretch) * (samples.length + echoExtra),
+            sampleRate);
 
         this.buffer = this.audioContext.createBuffer(1, samples.length, this.audioContext.sampleRate);
         this.buffer.getChannelData(0).set(samples);

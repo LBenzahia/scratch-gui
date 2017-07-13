@@ -5,6 +5,7 @@ const debounce = require('lodash.debounce');
 const {connect} = require('react-redux');
 
 const {computeRMS} = require('../lib/audio/audio-util.js');
+const VM = require('scratch-vm');
 
 const SoundEditorComponent = require('../components/sound-editor/sound-editor.jsx');
 const AudioBufferPlayer = require('../lib/audio/audio-buffer-player.js');
@@ -15,8 +16,6 @@ const monsterIcon = require('../components/sound-editor/icon--monster.svg');
 const echoIcon = require('../components/sound-editor/icon--echo.svg');
 const reverseIcon = require('../components/sound-editor/icon--reverse.svg');
 const robotIcon = require('../components/sound-editor/icon--robot.svg');
-const trimIcon = require('../components/sound-editor/icon--trim.svg');
-const clearIcon = require('../components/sound-editor/icon--clear.svg');
 
 const getChunkLevels = (samples, chunkSize = 256) => {
     const sampleCount = samples.length;
@@ -70,11 +69,11 @@ class SoundEditor extends React.Component {
         this.originalSamples = this.props.samples;
         this.undoStack = [];
         this.redoStack = [];
-        this.pushUndo = (samples) => {
+        this.pushUndo = samples => {
             this.undoStack.push(samples);
             this.redoStack = [];
-        }
-        this.undo = () => {
+        };
+        this.handleUndo = () => {
             const vm = this.props.vm;
             const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
             const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
@@ -86,14 +85,12 @@ class SoundEditor extends React.Component {
                 this.audioBufferPlayer = new AudioBufferPlayer(samples, this.props.sampleRate);
                 const newBuffer = audioCtx.createBuffer(1, samples.length, this.props.sampleRate);
                 newBuffer.getChannelData(0).set(samples);
-                const vm = this.props.vm;
-                const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
                 vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
                 this.setState({chunkLevels: getChunkLevels(samples)});
                 this.handlePlay();
             }
-        }
-        this.redo = () => {
+        };
+        this.handleRedo = () => {
             const vm = this.props.vm;
             const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
             const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
@@ -105,15 +102,15 @@ class SoundEditor extends React.Component {
                 this.audioBufferPlayer = new AudioBufferPlayer(samples, this.props.sampleRate);
                 const newBuffer = audioCtx.createBuffer(1, samples.length, this.props.sampleRate);
                 newBuffer.getChannelData(0).set(samples);
-                const vm = this.props.vm;
-                const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
                 vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
                 this.setState({chunkLevels: getChunkLevels(samples)});
                 this.handlePlay();
             }
-        }
-        this.canUndo = () => this.undoStack.length > 0 && !(this.state.monster || this.state.chipmunk || this.state.robot || this.state.echo || this.state.trimStart);
-        this.canRedo = () => this.redoStack.length > 0 && !(this.state.monster || this.state.chipmunk || this.state.robot || this.state.echo || this.state.trimStart);
+        };
+        this.canUndo = () => this.undoStack.length > 0 &&
+            !(this.state.monster || this.state.chipmunk || this.state.robot || this.state.echo || this.state.trimStart);
+        this.canRedo = () => this.redoStack.length > 0 &&
+            !(this.state.monster || this.state.chipmunk || this.state.robot || this.state.echo || this.state.trimStart);
         window.undoStack = this.undoStack;
         window.redoStack = this.redoStack;
 
@@ -173,15 +170,16 @@ class SoundEditor extends React.Component {
         const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
         const samples = buffer.getChannelData(0);
 
-        const pitch = this.state.monster ? 0.5 * (1 - this.state.monster) + 0.5 : (this.state.chipmunk ? this.state.chipmunk * 0.5 + 1 : 1);
+        const pitch = this.state.monster ? 0.5 * (1 - this.state.monster) + 0.5 : (
+            this.state.chipmunk ? this.state.chipmunk * 0.5 + 1 : 1);
         const echo = this.state.echo ? 0.5 * this.state.echo : 0;
         this.pushUndo(samples);
         const audioEffects = new AudioEffects(samples, buffer.sampleRate, pitch, echo);
-        audioEffects.apply().then(buffer => {
-            const samples = buffer.getChannelData(0);
-            vm.runtime.audioEngine.audioBuffers[sound.md5] = buffer;
-            this.audioBufferPlayer = new AudioBufferPlayer(samples, buffer.sampleRate);
-            this.setState({chunkLevels: getChunkLevels(samples)});
+        audioEffects.apply().then(newBuffer => {
+            const newSamples = newBuffer.getChannelData(0);
+            vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
+            this.audioBufferPlayer = new AudioBufferPlayer(newSamples, newBuffer.sampleRate);
+            this.setState({chunkLevels: getChunkLevels(newSamples)});
             // this.handlePlay();
             this.resetEffects();
         });
@@ -201,7 +199,7 @@ class SoundEditor extends React.Component {
         // Preview sound with effect?
         // vm.runtime.requestTargetsUpdate(vm.editingTarget);
         this.setState(effect);
-        this.handleApplyEffect()
+        this.handleApplyEffect();
     }
     handleApplyEffect () {
         this.handleStopPlaying();
@@ -211,19 +209,19 @@ class SoundEditor extends React.Component {
         const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
         const samples = buffer.getChannelData(0);
 
-        const pitch = this.state.monster ? 0.5 * (1 - this.state.monster) + 0.5 : (this.state.chipmunk ? this.state.chipmunk * 0.5 + 1 : 1);
+        const pitch = this.state.monster ? 0.5 * (1 - this.state.monster) + 0.5 : (
+            this.state.chipmunk ? this.state.chipmunk * 0.5 + 1 : 1);
         const echo = this.state.echo ? 0.5 * this.state.echo : 0;
         const audioEffects = new AudioEffects(samples, buffer.sampleRate, pitch, echo);
-        audioEffects.apply().then(buffer => {
-            const samples = buffer.getChannelData(0);
-            // vm.runtime.audioEngine.audioBuffers[sound.md5] = buffer;
-            this.audioBufferPlayer = new AudioBufferPlayer(samples, buffer.sampleRate);
-            this.setState({chunkLevels: getChunkLevels(samples)});
+        audioEffects.apply().then(newBuffer => {
+            const newSamples = newBuffer.getChannelData(0);
+            // vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
+            this.audioBufferPlayer = new AudioBufferPlayer(newSamples, newBuffer.sampleRate);
+            this.setState({chunkLevels: getChunkLevels(newSamples)});
             this.handlePlay();
         });
     }
     handleActivateTrim () {
-        console.log(this.state);
         if (this.state.trimStart === null && this.state.trimEnd === null) {
             this.resetEffects();
             this.setState({trimEnd: 0.9, trimStart: 0.1, trim: true});
@@ -257,9 +255,8 @@ class SoundEditor extends React.Component {
         const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
         const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
         const samples = buffer.getChannelData(0);
-        const sampleCount = samples.length;
         this.pushUndo(samples.slice(0));
-        const clippedSamples = samples.reverse()
+        const clippedSamples = samples.reverse();
 
         const newBuffer = audioCtx.createBuffer(1, clippedSamples.length, this.props.sampleRate);
         newBuffer.getChannelData(0).set(clippedSamples);
@@ -276,7 +273,6 @@ class SoundEditor extends React.Component {
         const vm = this.props.vm;
         const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
         const samples = this.originalSamples;
-        const sampleCount = samples.length;
         const clippedSamples = samples;
         const newBuffer = audioCtx.createBuffer(1, clippedSamples.length, this.props.sampleRate);
         newBuffer.getChannelData(0).set(clippedSamples);
@@ -290,6 +286,8 @@ class SoundEditor extends React.Component {
     render () {
         return (
             <SoundEditorComponent
+                canRedo={this.canRedo}
+                canUndo={this.canUndo}
                 chunkLevels={this.state.chunkLevels}
                 effects={[
                     {
@@ -342,35 +340,20 @@ class SoundEditor extends React.Component {
                         onChange: e => this.handleUpdateEffect({reverse: Number(e.target.value)}),
                         onSubmit: this.handleSubmitEffect,
                         onCancel: this.handleCancelEffect
-                    },
-                    // {
-                    //     name: 'Clear',
-                    //     value: false,
-                    //     active: false,
-                    //     icon: clearIcon,
-                    //     isAdjustable: false,
-                    //     onActivate: this.handleReset,
-                    //     onChange: e => this.handleUpdateEffect({trim: Number(e.target.value)}),
-                    //     onSubmit: this.handleCancelEffect,
-                    //     onCancel: this.handleCancelEffect
-                    // }
+                    }
                 ]}
                 name={this.props.name}
                 playhead={this.state.playhead}
                 trimEnd={this.state.trimEnd}
                 trimStart={this.state.trimStart}
+                onActiveTrim={this.handleActivateTrim}
                 onChangeName={this.handleChangeName}
                 onPlay={this.handlePlay}
+                onRedo={this.handleRedo}
                 onSetTrimEnd={this.handleUpdateTrimEnd}
                 onSetTrimStart={this.handleUpdateTrimStart}
                 onStop={this.handleStopPlaying}
-                onSetTrimStart={this.handleUpdateTrimStart}
-                onSetTrimEnd={this.handleUpdateTrimEnd}
-                onActiveTrim={this.handleActivateTrim}
-                onUndo={this.undo}
-                onRedo={this.redo}
-                canUndo={this.canUndo}
-                canRedo={this.canRedo}
+                onUndo={this.handleUndo}
             />
         );
     }
@@ -381,7 +364,8 @@ SoundEditor.propTypes = {
     onRenameSound: PropTypes.func.isRequired,
     sampleRate: PropTypes.number,
     samples: PropTypes.instanceOf(Float32Array),
-    soundIndex: PropTypes.number
+    soundIndex: PropTypes.number,
+    vm: PropTypes.instanceOf(VM)
 };
 
 const mapStateToProps = (state, {soundIndex}) => {

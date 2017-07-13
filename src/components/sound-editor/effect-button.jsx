@@ -15,7 +15,7 @@ class EffectButton extends React.Component {
         ]);
     }
 
-    componentDidUpdate (prevProps, prevState) {
+    componentDidUpdate (prevProps) {
         if (prevProps.active === false && this.props.active === true) {
             this.bindClickOutside();
         } else if (prevProps.active === true && this.props.active === false) {

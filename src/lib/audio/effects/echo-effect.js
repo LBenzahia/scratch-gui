@@ -20,10 +20,6 @@ class EchoEffect {
         this.decay.connect(this.delay);
     }
 
-    timeModifier (sampleCount, sampleRate) {
-        // this.decay.gain.value
-    }
-
     dispose () {
         // @todo dispose properly?
     }

@@ -59,15 +59,15 @@ const SoundEditor = props => (
                     <Box className={styles.buttonGroup}>
                         <button
                             className={styles.button}
-                            onClick={props.onUndo}
                             disabled={!props.canUndo()}
+                            onClick={props.onUndo}
                         >
                             <img src={undoIcon} />
                         </button>
                         <button
                             className={styles.button}
-                            onClick={props.onRedo}
                             disabled={!props.canRedo()}
+                            onClick={props.onRedo}
 
                         >
                             <img src={redoIcon} />
@@ -104,13 +104,22 @@ const SoundEditor = props => (
 );
 
 SoundEditor.propTypes = {
+    canRedo: PropTypes.func,
+    canUndo: PropTypes.func,
     chunkLevels: PropTypes.arrayOf(PropTypes.number).isRequired,
     effects: PropTypes.arrayOf(PropTypes.shape(EffectButton.propTypes)),
     name: PropTypes.string.isRequired,
+    onActiveTrim: PropTypes.func,
     onChangeName: PropTypes.func.isRequired,
     onPlay: PropTypes.func.isRequired,
+    onRedo: PropTypes.func,
+    onSetTrimEnd: PropTypes.func,
+    onSetTrimStart: PropTypes.func,
     onStop: PropTypes.func.isRequired,
-    playhead: PropTypes.number
+    onUndo: PropTypes.func,
+    playhead: PropTypes.number,
+    trimEnd: PropTypes.number,
+    trimStart: PropTypes.number
 };
 
 module.exports = SoundEditor;
