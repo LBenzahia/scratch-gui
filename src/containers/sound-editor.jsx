@@ -50,7 +50,8 @@ class SoundEditor extends React.Component {
             'handleReverse',
             'handleApplyEffect',
             'resetEffects',
-            'handleReset'
+            'handleReset',
+            'handleKeyPress'
         ]);
         this.state = {
             playhead: null, // null is not playing, [0 -> 1] is playing percent
@@ -111,12 +112,10 @@ class SoundEditor extends React.Component {
             !(this.state.monster || this.state.chipmunk || this.state.robot || this.state.echo || this.state.trimStart);
         this.canRedo = () => this.redoStack.length > 0 &&
             !(this.state.monster || this.state.chipmunk || this.state.robot || this.state.echo || this.state.trimStart);
-        window.undoStack = this.undoStack;
-        window.redoStack = this.redoStack;
-
     }
     componentDidMount () {
         this.audioBufferPlayer = new AudioBufferPlayer(this.props.samples, this.props.sampleRate);
+        document.addEventListener('keydown', this.handleKeyPress, false);
     }
     componentWillReceiveProps (newProps) {
         if (newProps.soundIndex !== this.props.soundIndex || newProps.samples !== this.props.samples) {
@@ -129,6 +128,7 @@ class SoundEditor extends React.Component {
     }
     componentWillUnmount () {
         this.audioBufferPlayer.stop();
+        document.removeEventListener('keydown', this.handleKeyPress, false);
     }
     resetEffects () {
         this.setState({
@@ -282,6 +282,13 @@ class SoundEditor extends React.Component {
 
         this.resetEffects();
         this.handlePlay();
+    }
+    handleKeyPress (e) {
+        if (e.key === 'z' && (e.metaKey || e.ctrlKey)) {
+            this.handleUndo();
+        } else if (e.key === 'Z' && (e.metaKey || e.ctrlKey)) {
+            this.handleRedo();
+        }
     }
     render () {
         return (
