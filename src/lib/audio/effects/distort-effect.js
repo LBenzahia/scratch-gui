@@ -23,9 +23,9 @@ class DistortEffect {
             // Piecewise function given by (2) in Parker paper
             const transform = (v, vb = 0.2, vl = 0.4, h = 0.85) => {
                 if (v <= vb) return 0;
-                if (v <= vl) return h * (Math.pow(v - vb, 2) / (2 * vl - 2 * vb))
+                if (v <= vl) return h * (Math.pow(v - vb, 2) / (2 * vl - 2 * vb));
                 return h * v - h * vl + h * (Math.pow(v - vb, 2) / (2 * vl - 2 * vb));
-            }
+            };
 
             // Create the waveshaper curve with the voltage transform above
             const bufferLength = 1024;
