@@ -16,6 +16,7 @@ const monsterIcon = require('../components/sound-editor/icon--monster.svg');
 const echoIcon = require('../components/sound-editor/icon--echo.svg');
 const reverseIcon = require('../components/sound-editor/icon--reverse.svg');
 const robotIcon = require('../components/sound-editor/icon--robot.svg');
+const volumeIcon = require('../components/sound-editor/icon--volume.svg');
 
 const getChunkLevels = (samples, chunkSize = 256) => {
     const sampleCount = samples.length;
@@ -61,6 +62,7 @@ class SoundEditor extends React.Component {
             echo: null,
             reverse: null,
             robot: null,
+            volume: null,
             trim: null,
             trimStart: null,
             trimEnd: null
@@ -109,9 +111,11 @@ class SoundEditor extends React.Component {
             }
         };
         this.canUndo = () => this.undoStack.length > 0 &&
-            !(this.state.monster || this.state.chipmunk || this.state.robot || this.state.echo || this.state.trimStart);
+            !(this.state.monster || this.state.chipmunk || this.state.robot ||
+                this.state.echo || this.state.trimStart || this.state.volume);
         this.canRedo = () => this.redoStack.length > 0 &&
-            !(this.state.monster || this.state.chipmunk || this.state.robot || this.state.echo || this.state.trimStart);
+            !(this.state.monster || this.state.chipmunk || this.state.robot ||
+                this.state.echo || this.state.trimStart || this.state.volume);
     }
     componentDidMount () {
         this.audioBufferPlayer = new AudioBufferPlayer(this.props.samples, this.props.sampleRate);
@@ -138,6 +142,7 @@ class SoundEditor extends React.Component {
             reverse: null,
             robot: null,
             trim: null,
+            volume: null,
             trimStart: null,
             trimEnd: null
         });
@@ -175,7 +180,7 @@ class SoundEditor extends React.Component {
         const echo = this.state.echo ? 0.5 * this.state.echo : 0;
         const robot = this.state.robot ? this.state.robot : 0;
         this.pushUndo(samples);
-        const audioEffects = new AudioEffects(samples, buffer.sampleRate, pitch, echo, robot);
+        const audioEffects = new AudioEffects(samples, buffer.sampleRate, pitch, echo, robot, this.state.volume);
         audioEffects.apply().then(newBuffer => {
             const newSamples = newBuffer.getChannelData(0);
             vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
@@ -193,7 +198,7 @@ class SoundEditor extends React.Component {
     }
     handleActivateEffect (effect) {
         this.resetEffects();
-        this.setState({[effect]: this.state[effect] === null ? 0.25 : null});
+        this.setState({[effect]: this.state[effect] === null ? 0.5 : null});
         this.handleApplyEffect();
     }
     handleUpdateEffect (effect) {
@@ -214,7 +219,7 @@ class SoundEditor extends React.Component {
             this.state.chipmunk ? this.state.chipmunk * 0.5 + 1 : 1);
         const echo = this.state.echo ? 0.5 * this.state.echo : 0;
         const robot = this.state.robot ? this.state.robot : 0;
-        const audioEffects = new AudioEffects(samples, buffer.sampleRate, pitch, echo, robot);
+        const audioEffects = new AudioEffects(samples, buffer.sampleRate, pitch, echo, robot, this.state.volume);
         audioEffects.apply().then(newBuffer => {
             const newSamples = newBuffer.getChannelData(0);
             // vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
@@ -336,6 +341,16 @@ class SoundEditor extends React.Component {
                         icon: robotIcon,
                         onActivate: () => this.handleActivateEffect('robot'),
                         onChange: e => this.handleUpdateEffect({robot: Number(e.target.value)}),
+                        onSubmit: this.handleSubmitEffect,
+                        onCancel: this.handleCancelEffect
+                    },
+                    {
+                        name: 'Volume',
+                        value: this.state.volume,
+                        active: this.state.volume !== null,
+                        icon: volumeIcon,
+                        onActivate: () => this.handleActivateEffect('volume'),
+                        onChange: e => this.handleUpdateEffect({volume: Number(e.target.value)}),
                         onSubmit: this.handleSubmitEffect,
                         onCancel: this.handleCancelEffect
                     },
