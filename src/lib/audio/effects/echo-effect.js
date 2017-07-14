@@ -2,8 +2,13 @@ class EchoEffect {
     constructor (audioContext, delayTime) {
         this.audioContext = audioContext;
         this.delayTime = delayTime;
-
         this.input = this.audioContext.createGain();
+        this.output = this.audioContext.createGain();
+
+        if (delayTime === 0) {
+            this.input.connect(this.output);
+            return;
+        }
 
         this.delay = this.audioContext.createDelay(1);
         this.delay.delayTime.value = delayTime;
@@ -17,12 +22,8 @@ class EchoEffect {
         this.compressor.attack.value = 0;
         this.compressor.release.value = 0.25;
 
-        this.output = this.audioContext.createGain();
-
         this.input.connect(this.delay);
-        if (delayTime !== 0) {
-            this.delay.connect(this.compressor);
-        }
+        this.delay.connect(this.compressor);
         this.input.connect(this.compressor);
         this.delay.connect(this.decay);
         this.decay.connect(this.delay);
