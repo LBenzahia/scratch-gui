@@ -1,4 +1,6 @@
 const EchoEffect = require('./effects/echo-effect.js');
+const DistortEffect = require('./effects/distort-effect.js');
+
 
 class AudioEffects {
     constructor (samples, sampleRate, pitch, echo, distort) {
@@ -28,8 +30,8 @@ class AudioEffects {
         this.source.start();
 
         const effectNodes = [
-            new EchoEffect(this.audioContext, this.echo)
-            // new DistortEffect(this.audioContext, this.distort)
+            new EchoEffect(this.audioContext, this.echo),
+            new DistortEffect(this.audioContext, this.distort)
         ];
 
         for (let i = 1; i < effectNodes.length; i++) {

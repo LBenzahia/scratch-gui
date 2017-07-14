@@ -173,8 +173,9 @@ class SoundEditor extends React.Component {
         const pitch = this.state.monster ? 0.5 * (1 - this.state.monster) + 0.5 : (
             this.state.chipmunk ? this.state.chipmunk * 0.5 + 1 : 1);
         const echo = this.state.echo ? 0.5 * this.state.echo : 0;
+        const robot = this.state.robot ? this.state.robot : 0;
         this.pushUndo(samples);
-        const audioEffects = new AudioEffects(samples, buffer.sampleRate, pitch, echo);
+        const audioEffects = new AudioEffects(samples, buffer.sampleRate, pitch, echo, robot);
         audioEffects.apply().then(newBuffer => {
             const newSamples = newBuffer.getChannelData(0);
             vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
@@ -212,7 +213,8 @@ class SoundEditor extends React.Component {
         const pitch = this.state.monster ? 0.5 * (1 - this.state.monster) + 0.5 : (
             this.state.chipmunk ? this.state.chipmunk * 0.5 + 1 : 1);
         const echo = this.state.echo ? 0.5 * this.state.echo : 0;
-        const audioEffects = new AudioEffects(samples, buffer.sampleRate, pitch, echo);
+        const robot = this.state.robot ? this.state.robot : 0;
+        const audioEffects = new AudioEffects(samples, buffer.sampleRate, pitch, echo, robot);
         audioEffects.apply().then(newBuffer => {
             const newSamples = newBuffer.getChannelData(0);
             // vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
