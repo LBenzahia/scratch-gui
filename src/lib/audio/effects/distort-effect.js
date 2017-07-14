@@ -21,7 +21,7 @@ class DistortEffect {
             const node = this.audioContext.createWaveShaper();
 
             // Piecewise function given by (2) in Parker paper
-            const transform = (v, vb = 0.2, vl = 0.4, h = 0.85) => {
+            const transform = (v, vb = 0.2, vl = 0.4, h = 0.65) => {
                 if (v <= vb) return 0;
                 if (v <= vl) return h * (Math.pow(v - vb, 2) / (2 * vl - 2 * vb));
                 return h * v - h * vl + h * (Math.pow(v - vb, 2) / (2 * vl - 2 * vb));
@@ -39,7 +39,7 @@ class DistortEffect {
         };
 
         const oscillator = this.audioContext.createOscillator();
-        oscillator.frequency.value = 2000 * distortion;
+        oscillator.frequency.value = 500 * distortion;
         oscillator.start(0);
 
         const vInGain = this.audioContext.createGain();
