@@ -1,7 +1,6 @@
 const bindAll = require('lodash.bindall');
 const PropTypes = require('prop-types');
 const React = require('react');
-const debounce = require('lodash.debounce');
 const {connect} = require('react-redux');
 
 const {computeRMS} = require('../lib/audio/audio-util.js');
@@ -16,7 +15,8 @@ const monsterIcon = require('../components/sound-editor/icon--monster.svg');
 const echoIcon = require('../components/sound-editor/icon--echo.svg');
 const reverseIcon = require('../components/sound-editor/icon--reverse.svg');
 const robotIcon = require('../components/sound-editor/icon--robot.svg');
-const volumeIcon = require('../components/sound-editor/icon--volume.svg');
+const louderIcon = require('../components/sound-editor/icon--louder.svg');
+const softerIcon = require('../components/sound-editor/icon--softer.svg');
 
 const getChunkLevels = (samples, chunkSize = 256) => {
     const sampleCount = samples.length;
@@ -41,18 +41,16 @@ class SoundEditor extends React.Component {
             'handlePlay',
             'handleStopPlaying',
             'handleUpdatePlayhead',
-            'handleCancelEffect',
             'handleSubmitEffect',
-            'handleUpdateEffect',
             'handleActivateEffect',
             'handleActivateTrim',
             'handleUpdateTrimEnd',
             'handleUpdateTrimStart',
             'handleReverse',
-            'handleApplyEffect',
             'resetEffects',
-            'handleReset',
-            'handleKeyPress'
+            'handleKeyPress',
+            'handleUndo',
+            'handleRedo'
         ]);
         this.state = {
             playhead: null, // null is not playing, [0 -> 1] is playing percent
@@ -62,60 +60,14 @@ class SoundEditor extends React.Component {
             echo: null,
             reverse: null,
             robot: null,
-            volume: null,
+            louder: null,
+            softer: null,
             trim: null,
             trimStart: null,
             trimEnd: null
         };
-        this.handlePlay = debounce(this.handlePlay, 200);
-        this.handleApplyEffect = debounce(this.handleApplyEffect, 200);
-        this.originalSamples = this.props.samples;
         this.undoStack = [];
         this.redoStack = [];
-        this.pushUndo = samples => {
-            this.undoStack.push(samples);
-            this.redoStack = [];
-        };
-        this.handleUndo = () => {
-            const vm = this.props.vm;
-            const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
-            const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
-            this.redoStack.push(buffer.getChannelData(0));
-
-            const samples = this.undoStack.pop();
-            if (samples) {
-                this.audioBufferPlayer.stop();
-                this.audioBufferPlayer = new AudioBufferPlayer(samples, this.props.sampleRate);
-                const newBuffer = audioCtx.createBuffer(1, samples.length, this.props.sampleRate);
-                newBuffer.getChannelData(0).set(samples);
-                vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
-                this.setState({chunkLevels: getChunkLevels(samples)});
-                this.handlePlay();
-            }
-        };
-        this.handleRedo = () => {
-            const vm = this.props.vm;
-            const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
-            const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
-            this.undoStack.push(buffer.getChannelData(0));
-
-            const samples = this.redoStack.pop();
-            if (samples) {
-                this.audioBufferPlayer.stop();
-                this.audioBufferPlayer = new AudioBufferPlayer(samples, this.props.sampleRate);
-                const newBuffer = audioCtx.createBuffer(1, samples.length, this.props.sampleRate);
-                newBuffer.getChannelData(0).set(samples);
-                vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
-                this.setState({chunkLevels: getChunkLevels(samples)});
-                this.handlePlay();
-            }
-        };
-        this.canUndo = () => this.undoStack.length > 0 &&
-            !(this.state.monster || this.state.chipmunk || this.state.robot ||
-                this.state.echo || this.state.trimStart || this.state.volume);
-        this.canRedo = () => this.redoStack.length > 0 &&
-            !(this.state.monster || this.state.chipmunk || this.state.robot ||
-                this.state.echo || this.state.trimStart || this.state.volume);
     }
     componentDidMount () {
         this.audioBufferPlayer = new AudioBufferPlayer(this.props.samples, this.props.sampleRate);
@@ -123,8 +75,8 @@ class SoundEditor extends React.Component {
     }
     componentWillReceiveProps (newProps) {
         if (newProps.soundIndex !== this.props.soundIndex || newProps.samples !== this.props.samples) {
-            this.originalSamples = newProps.samples;
-
+            this.undoStack = [];
+            this.redoStack = [];
             this.audioBufferPlayer.stop();
             this.audioBufferPlayer = new AudioBufferPlayer(newProps.samples, newProps.sampleRate);
             this.setState({chunkLevels: getChunkLevels(newProps.samples)});
@@ -134,6 +86,45 @@ class SoundEditor extends React.Component {
         this.audioBufferPlayer.stop();
         document.removeEventListener('keydown', this.handleKeyPress, false);
     }
+    pushUndo (samples) {
+        this.undoStack.push(samples);
+        this.redoStack = [];
+    }
+    getCurrentSamples () {
+        const vm = this.props.vm;
+        const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
+        const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
+        return {
+            samples: buffer.getChannelData(0),
+            sampleRate: buffer.sampleRate
+        };
+    }
+    submitNewSamples (samples) {
+        const vm = this.props.vm;
+        const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
+        this.audioBufferPlayer.stop();
+        this.audioBufferPlayer = new AudioBufferPlayer(samples, this.props.sampleRate);
+        const newBuffer = audioCtx.createBuffer(1, samples.length, this.props.sampleRate);
+        newBuffer.getChannelData(0).set(samples);
+        vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
+        this.resetEffects();
+        this.setState({chunkLevels: getChunkLevels(samples)});
+        this.handlePlay();
+    }
+    handleUndo () {
+        this.redoStack.push(this.getCurrentSamples().samples);
+        const samples = this.undoStack.pop();
+        if (samples) {
+            this.submitNewSamples(samples);
+        }
+    }
+    handleRedo () {
+        this.undoStack.push(this.getCurrentSamples().samples);
+        const samples = this.redoStack.pop();
+        if (samples) {
+            this.submitNewSamples(samples);
+        }
+    }
     resetEffects () {
         this.setState({
             chipmunk: null,
@@ -142,7 +133,8 @@ class SoundEditor extends React.Component {
             reverse: null,
             robot: null,
             trim: null,
-            volume: null,
+            louder: null,
+            softer: null,
             trimStart: null,
             trimEnd: null
         });
@@ -167,87 +159,38 @@ class SoundEditor extends React.Component {
     handleChangeName (name) {
         this.props.onRenameSound(this.props.soundIndex, name);
     }
-    handleSubmitEffect () {
+    handleSubmitEffect (effects) {
         this.handleStopPlaying();
-
-        const vm = this.props.vm;
-        const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
-        const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
-        const samples = buffer.getChannelData(0);
-
-        const pitch = this.state.monster ? 0.5 * (1 - this.state.monster) + 0.5 : (
-            this.state.chipmunk ? this.state.chipmunk * 0.5 + 1 : 1);
-        const echo = this.state.echo ? 0.5 * this.state.echo : 0;
-        const robot = this.state.robot ? this.state.robot : 0;
+        const {samples, sampleRate} = this.getCurrentSamples();
+        const pitch = effects.monster ? 0.5 * (1 - effects.monster) + 0.5 : (
+            effects.chipmunk ? effects.chipmunk * 0.5 + 1 : 1);
+        const echo = effects.echo ? 0.5 * effects.echo : 0;
+        const robot = effects.robot ? effects.robot : 0;
+        const volume = effects.louder ? 1.5 : (effects.softer ? 0.5 : 1);
         this.pushUndo(samples);
-        const audioEffects = new AudioEffects(samples, buffer.sampleRate, pitch, echo, robot, this.state.volume);
+        const audioEffects = new AudioEffects(samples, sampleRate, pitch, echo, robot, volume);
         audioEffects.apply().then(newBuffer => {
             const newSamples = newBuffer.getChannelData(0);
-            vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
-            this.audioBufferPlayer = new AudioBufferPlayer(newSamples, newBuffer.sampleRate);
-            this.setState({chunkLevels: getChunkLevels(newSamples)});
-            // this.handlePlay();
-            this.resetEffects();
+            this.submitNewSamples(newSamples);
         });
-    }
-    handleCancelEffect () {
-        this.handleStopPlaying();
-        this.audioBufferPlayer = new AudioBufferPlayer(this.props.samples, this.props.sampleRate);
-        this.setState({chunkLevels: getChunkLevels(this.props.samples)});
-        this.resetEffects();
     }
     handleActivateEffect (effect) {
-        this.resetEffects();
-        this.setState({[effect]: this.state[effect] === null ? 0.5 : null});
-        this.handleApplyEffect();
-    }
-    handleUpdateEffect (effect) {
-        // Preview sound with effect?
-        // vm.runtime.requestTargetsUpdate(vm.editingTarget);
-        this.setState(effect);
-        this.handleApplyEffect();
-    }
-    handleApplyEffect () {
-        this.handleStopPlaying();
-
-        const vm = this.props.vm;
-        const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
-        const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
-        const samples = buffer.getChannelData(0);
-
-        const pitch = this.state.monster ? 0.5 * (1 - this.state.monster) + 0.5 : (
-            this.state.chipmunk ? this.state.chipmunk * 0.5 + 1 : 1);
-        const echo = this.state.echo ? 0.5 * this.state.echo : 0;
-        const robot = this.state.robot ? this.state.robot : 0;
-        const audioEffects = new AudioEffects(samples, buffer.sampleRate, pitch, echo, robot, this.state.volume);
-        audioEffects.apply().then(newBuffer => {
-            const newSamples = newBuffer.getChannelData(0);
-            // vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
-            this.audioBufferPlayer = new AudioBufferPlayer(newSamples, newBuffer.sampleRate);
-            this.setState({chunkLevels: getChunkLevels(newSamples)});
-            this.handlePlay();
-        });
+        const effects = {[effect]: this.state[effect] === null ? 0.5 : null};
+        this.handleSubmitEffect(effects);
     }
     handleActivateTrim () {
         if (this.state.trimStart === null && this.state.trimEnd === null) {
             this.resetEffects();
             this.setState({trimEnd: 0.9, trimStart: 0.1, trim: true});
         } else {
-            const vm = this.props.vm;
-            const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
-            const buffer = vm.runtime.audioEngine.audioBuffers[sound.md5];
-            const samples = buffer.getChannelData(0);
+            const {samples} = this.getCurrentSamples();
             const sampleCount = samples.length;
             const startIndex = Math.floor(this.state.trimStart * sampleCount);
             const endIndex = Math.floor(this.state.trimEnd * sampleCount);
             this.pushUndo(samples);
 
             const clippedSamples = samples.slice(startIndex, endIndex);
-            const newBuffer = audioCtx.createBuffer(1, clippedSamples.length, this.props.sampleRate);
-            newBuffer.getChannelData(0).set(clippedSamples);
-            vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
-            vm.runtime.requestTargetsUpdate(vm.editingTarget);
-            this.resetEffects();
+            this.submitNewSamples(clippedSamples);
         }
     }
     handleUpdateTrimEnd (trimEnd) {
@@ -265,30 +208,7 @@ class SoundEditor extends React.Component {
         this.pushUndo(samples.slice(0));
         const clippedSamples = samples.reverse();
 
-        const newBuffer = audioCtx.createBuffer(1, clippedSamples.length, this.props.sampleRate);
-        newBuffer.getChannelData(0).set(clippedSamples);
-        // vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
-        this.audioBufferPlayer = new AudioBufferPlayer(clippedSamples, buffer.sampleRate);
-        this.setState({chunkLevels: getChunkLevels(clippedSamples)});
-        this.resetEffects();
-        this.handlePlay();
-
-    }
-    handleReset () {
-        this.handleStopPlaying();
-
-        const vm = this.props.vm;
-        const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
-        const samples = this.originalSamples;
-        const clippedSamples = samples;
-        const newBuffer = audioCtx.createBuffer(1, clippedSamples.length, this.props.sampleRate);
-        newBuffer.getChannelData(0).set(clippedSamples);
-        vm.runtime.audioEngine.audioBuffers[sound.md5] = newBuffer;
-        vm.runtime.requestTargetsUpdate(vm.editingTarget);
-        this.audioBufferPlayer = new AudioBufferPlayer(clippedSamples, newBuffer.sampleRate);
-
-        this.resetEffects();
-        this.handlePlay();
+        this.submitNewSamples(clippedSamples);
     }
     handleKeyPress (e) {
         if (e.key === 'z' && (e.metaKey || e.ctrlKey)) {
@@ -300,70 +220,44 @@ class SoundEditor extends React.Component {
     render () {
         return (
             <SoundEditorComponent
-                canRedo={this.canRedo}
-                canUndo={this.canUndo}
+                canRedo={this.redoStack.length > 0}
+                canUndo={this.undoStack.length > 0}
                 chunkLevels={this.state.chunkLevels}
                 effects={[
                     {
                         name: 'Chipmunk',
-                        value: this.state.chipmunk,
-                        active: this.state.chipmunk !== null,
                         icon: chipmunkIcon,
-                        onActivate: () => this.handleActivateEffect('chipmunk'),
-                        onChange: e => this.handleUpdateEffect({chipmunk: Number(e.target.value)}),
-                        onSubmit: this.handleSubmitEffect,
-                        onCancel: this.handleCancelEffect
+                        onActivate: () => this.handleActivateEffect('chipmunk')
                     },
                     {
                         name: 'Monster',
-                        value: this.state.monster,
-                        active: this.state.monster !== null,
                         icon: monsterIcon,
-                        onActivate: () => this.handleActivateEffect('monster'),
-                        onChange: e => this.handleUpdateEffect({monster: Number(e.target.value)}),
-                        onSubmit: this.handleSubmitEffect,
-                        onCancel: this.handleCancelEffect
+                        onActivate: () => this.handleActivateEffect('monster')
                     },
                     {
                         name: 'Echo',
-                        value: this.state.echo,
-                        active: this.state.echo !== null,
                         icon: echoIcon,
-                        onActivate: () => this.handleActivateEffect('echo'),
-                        onChange: e => this.handleUpdateEffect({echo: Number(e.target.value)}),
-                        onSubmit: this.handleSubmitEffect,
-                        onCancel: this.handleCancelEffect
+                        onActivate: () => this.handleActivateEffect('echo')
                     },
                     {
                         name: 'Robot',
-                        value: this.state.robot,
-                        active: this.state.robot !== null,
                         icon: robotIcon,
-                        onActivate: () => this.handleActivateEffect('robot'),
-                        onChange: e => this.handleUpdateEffect({robot: Number(e.target.value)}),
-                        onSubmit: this.handleSubmitEffect,
-                        onCancel: this.handleCancelEffect
+                        onActivate: () => this.handleActivateEffect('robot')
                     },
                     {
-                        name: 'Volume',
-                        value: this.state.volume,
-                        active: this.state.volume !== null,
-                        icon: volumeIcon,
-                        onActivate: () => this.handleActivateEffect('volume'),
-                        onChange: e => this.handleUpdateEffect({volume: Number(e.target.value)}),
-                        onSubmit: this.handleSubmitEffect,
-                        onCancel: this.handleCancelEffect
+                        name: 'Louder',
+                        icon: louderIcon,
+                        onActivate: () => this.handleActivateEffect('louder')
+                    },
+                    {
+                        name: 'Softer',
+                        icon: softerIcon,
+                        onActivate: () => this.handleActivateEffect('softer')
                     },
                     {
                         name: 'Reverse',
-                        value: this.state.reverse,
-                        active: this.state.reverse !== null,
                         icon: reverseIcon,
-                        isAdjustable: false,
-                        onActivate: this.handleReverse,
-                        onChange: e => this.handleUpdateEffect({reverse: Number(e.target.value)}),
-                        onSubmit: this.handleSubmitEffect,
-                        onCancel: this.handleCancelEffect
+                        onActivate: this.handleReverse
                     }
                 ]}
                 name={this.props.name}

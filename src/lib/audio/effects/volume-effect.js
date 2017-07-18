@@ -11,7 +11,7 @@ class VolumeEffect {
         }
 
         this.gain = this.audioContext.createGain();
-        this.gain.gain.value = 2 * volume;
+        this.gain.gain.value = volume;
 
         this.input.connect(this.gain);
         this.gain.connect(this.output);

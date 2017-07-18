@@ -17,6 +17,10 @@
     width: 60px;
     padding: 5px;
     transition: 0.2s;
+    user-select: none;
+    user-drag: none;
+    -webkit-user-drag: none; /* Autoprefixer doesn't seem to work for this */
+
 }
 
 .effect-button:hover .effect-button-icon, .isActive .effect-button-icon {

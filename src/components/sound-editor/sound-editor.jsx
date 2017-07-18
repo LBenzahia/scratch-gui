@@ -59,14 +59,14 @@ const SoundEditor = props => (
                     <Box className={styles.buttonGroup}>
                         <button
                             className={styles.button}
-                            disabled={!props.canUndo()}
+                            disabled={!props.canUndo}
                             onClick={props.onUndo}
                         >
                             <img src={undoIcon} />
                         </button>
                         <button
                             className={styles.button}
-                            disabled={!props.canRedo()}
+                            disabled={!props.canRedo}
                             onClick={props.onRedo}
 
                         >
@@ -104,8 +104,8 @@ const SoundEditor = props => (
 );
 
 SoundEditor.propTypes = {
-    canRedo: PropTypes.func,
-    canUndo: PropTypes.func,
+    canRedo: PropTypes.bool.isRequired,
+    canUndo: PropTypes.bool.isRequired,
     chunkLevels: PropTypes.arrayOf(PropTypes.number).isRequired,
     effects: PropTypes.arrayOf(PropTypes.shape(EffectButton.propTypes)),
     name: PropTypes.string.isRequired,
