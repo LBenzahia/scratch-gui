@@ -10,8 +10,8 @@ const SoundEditorComponent = require('../components/sound-editor/sound-editor.js
 const AudioBufferPlayer = require('../lib/audio/audio-buffer-player.js');
 const AudioEffects = require('../lib/audio/audio-effects.js');
 
-const chipmunkIcon = require('../components/sound-editor/icon--chipmunk.svg');
-const monsterIcon = require('../components/sound-editor/icon--monster.svg');
+const higherIcon = require('../components/sound-editor/icon--higher.svg');
+const lowerIcon = require('../components/sound-editor/icon--lower.svg');
 const echoIcon = require('../components/sound-editor/icon--echo.svg');
 const reverseIcon = require('../components/sound-editor/icon--reverse.svg');
 const robotIcon = require('../components/sound-editor/icon--robot.svg');
@@ -226,13 +226,13 @@ class SoundEditor extends React.Component {
                 chunkLevels={this.state.chunkLevels}
                 effects={[
                     {
-                        name: 'Chipmunk',
-                        icon: chipmunkIcon,
+                        name: 'Higher',
+                        icon: higherIcon,
                         onActivate: () => this.handleActivateEffect('chipmunk')
                     },
                     {
-                        name: 'Monster',
-                        icon: monsterIcon,
+                        name: 'Lower',
+                        icon: lowerIcon,
                         onActivate: () => this.handleActivateEffect('monster')
                     },
                     {
