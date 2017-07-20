@@ -39,7 +39,7 @@ class DistortEffect {
         };
 
         const oscillator = this.audioContext.createOscillator();
-        oscillator.frequency.value = 500 * distortion;
+        oscillator.frequency.value = 50;
         oscillator.start(0);
 
         const vInGain = this.audioContext.createGain();
@@ -74,7 +74,7 @@ class DistortEffect {
         const biquadFilter = this.audioContext.createBiquadFilter();
         biquadFilter.type = 'highpass';
         biquadFilter.frequency.value = 1000;
-        biquadFilter.gain.value = 2;
+        biquadFilter.gain.value = 1.25;
 
         this.input.connect(vcInverter1);
         this.input.connect(vcDiode4);

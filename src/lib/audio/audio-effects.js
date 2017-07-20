@@ -6,10 +6,10 @@ class AudioEffects {
     constructor (samples, sampleRate, pitch, echo, distort, volume) {
         // @todo need to compensate for effect changes on sample time
         // echo of X seconds, decay at 0.5 => 0.5 ^ 3 = 0.03, (N+1) * X = additional time
-        echo = echo || 0;
+        echo = echo ? 0.25 : 0;
         pitch = pitch || 1.0;
         distort = distort || 0;
-        const echoExtra = echo * 4 * sampleRate;
+        const echoExtra = echo * 3 * sampleRate;
         this.playbackStretch = pitch;
         this.echo = echo;
         this.distort = distort;
@@ -28,7 +28,6 @@ class AudioEffects {
         this.source.buffer = this.buffer;
         this.source.playbackRate.value = this.playbackStretch;
         this.source.start();
-
         const effectNodes = [
             new EchoEffect(this.audioContext, this.echo),
             new DistortEffect(this.audioContext, this.distort),

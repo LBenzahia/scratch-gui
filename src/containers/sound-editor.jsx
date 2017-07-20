@@ -119,9 +119,9 @@ class SoundEditor extends React.Component {
         }
     }
     handleRedo () {
-        this.undoStack.push(this.getCurrentSamples().samples);
         const samples = this.redoStack.pop();
         if (samples) {
+            this.undoStack.push(this.getCurrentSamples().samples);
             this.submitNewSamples(samples);
         }
     }
@@ -162,11 +162,12 @@ class SoundEditor extends React.Component {
     handleSubmitEffect (effects) {
         this.handleStopPlaying();
         const {samples, sampleRate} = this.getCurrentSamples();
-        const pitch = effects.monster ? 0.5 * (1 - effects.monster) + 0.5 : (
-            effects.chipmunk ? effects.chipmunk * 0.5 + 1 : 1);
+        const halfToneRatio = Math.pow(2, 1 / 12);
+        const pitch = effects.monster ? 1 / halfToneRatio : (
+            effects.chipmunk ? halfToneRatio : 1);
         const echo = effects.echo ? 0.5 * effects.echo : 0;
         const robot = effects.robot ? effects.robot : 0;
-        const volume = effects.louder ? 1.5 : (effects.softer ? 0.5 : 1);
+        const volume = effects.louder ? 1.25 : (effects.softer ? 0.75 : 1);
         this.pushUndo(samples);
         const audioEffects = new AudioEffects(samples, sampleRate, pitch, echo, robot, volume);
         audioEffects.apply().then(newBuffer => {
@@ -181,7 +182,7 @@ class SoundEditor extends React.Component {
     handleActivateTrim () {
         if (this.state.trimStart === null && this.state.trimEnd === null) {
             this.resetEffects();
-            this.setState({trimEnd: 0.9, trimStart: 0.1, trim: true});
+            this.setState({trimEnd: 0.95, trimStart: 0.05, trim: true});
         } else {
             const {samples} = this.getCurrentSamples();
             const sampleCount = samples.length;
