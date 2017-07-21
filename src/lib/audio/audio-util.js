@@ -1,5 +1,6 @@
 class AudioUtil {
     static computeRMS (samples) {
+        if (samples.length === 0) return 0;
         // Calculate RMS, adapted from https://github.com/Tonejs/Tone.js/blob/master/Tone/component/Meter.js#L88
         let sum = 0;
         for (let i = 0; i < samples.length; i++) {
