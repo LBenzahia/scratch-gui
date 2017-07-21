@@ -6,6 +6,7 @@ import AudioEngine from 'scratch-audio';
 import LibraryComponent from '../components/library/library.jsx';
 
 import soundIcon from '../components/asset-panel/icon--sound.svg';
+import StringUtil from '../lib/string-util';
 
 import soundLibraryContent from '../lib/libraries/sounds.json';
 
@@ -55,6 +56,12 @@ class SoundLibrary extends React.PureComponent {
             sampleCount: soundItem.sampleCount,
             name: soundItem.name
         };
+        const newSoundName = StringUtil.unusedName(
+            soundItem.name,
+            this.props.vm.editingTarget.sprite.sounds.map(s => s.name)
+        );
+        vmSound.name = newSoundName;
+
         this.props.vm.addSound(vmSound);
     }
     render () {

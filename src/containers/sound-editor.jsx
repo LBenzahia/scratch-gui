@@ -102,6 +102,10 @@ class SoundEditor extends React.Component {
     submitNewSamples (samples) {
         const vm = this.props.vm;
         const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
+        if (sound.md5.indexOf('-modified') === -1) {
+            sound.md5 = `${sound.md5}-modified`;
+        }
+        
         this.audioBufferPlayer.stop();
         this.audioBufferPlayer = new AudioBufferPlayer(samples, this.props.sampleRate);
         const newBuffer = audioCtx.createBuffer(1, samples.length, this.props.sampleRate);
