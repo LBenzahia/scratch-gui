@@ -103,7 +103,7 @@ class SoundEditor extends React.Component {
         const vm = this.props.vm;
         const sound = vm.editingTarget.sprite.sounds[this.props.soundIndex];
         if (sound.md5.indexOf('-modified') === -1) {
-            sound.md5 = `${sound.md5}-modified`;
+            sound.md5 = `${sound.md5}-modified${Math.random()}`;
         }
 
         this.audioBufferPlayer.stop();
