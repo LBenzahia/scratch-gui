@@ -25,7 +25,19 @@ class SoundTab extends React.Component {
             'handleSelectSound',
             'handleDeleteSound'
         ]);
-        this.state = {selectedSoundIndex: 0};
+
+        const {
+            editingTarget,
+            sprites,
+            stage
+        } = props;
+
+        const target = editingTarget && sprites[editingTarget] ? sprites[editingTarget] : stage;
+
+        this.state = {
+            soundsCount: target && target.sounds ? target.sounds.length : 0,
+            selectedSoundIndex: 0
+        };
     }
 
     componentWillReceiveProps (nextProps) {
@@ -37,8 +49,18 @@ class SoundTab extends React.Component {
 
         const target = editingTarget && sprites[editingTarget] ? sprites[editingTarget] : stage;
 
-        if (target && target.sounds && this.state.selectedSoundIndex > target.sounds.length - 1) {
-            this.setState({selectedSoundIndex: Math.max(0, target.sounds.length - 1)});
+        if (target && target.sounds) {
+            const nextSoundsCount = target.sounds.length;
+            if (this.state.selectedSoundIndex > target.sounds.length - 1) {
+                this.setState({selectedSoundIndex: Math.max(0, target.sounds.length - 1)});
+            }
+            if (nextSoundsCount > this.state.soundsCount) {
+                this.setState({selectedSoundIndex: Math.max(0, nextSoundsCount - 1)});
+            }
+
+            if (target.sounds.length !== this.state.soundsCount) {
+                this.setState({soundsCount: target.sounds.length});
+            }
         }
     }
 
