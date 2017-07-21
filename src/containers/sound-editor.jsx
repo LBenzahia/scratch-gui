@@ -79,7 +79,7 @@ class SoundEditor extends React.Component {
             this.redoStack = [];
             this.audioBufferPlayer.stop();
             this.audioBufferPlayer = new AudioBufferPlayer(newProps.samples, newProps.sampleRate);
-            this.setState({chunkLevels: getChunkLevels(newProps.samples)});
+            this.setState({chunkLevels: getChunkLevels(newProps.samples), playhead: null});
         }
     }
     componentWillUnmount () {
@@ -105,7 +105,7 @@ class SoundEditor extends React.Component {
         if (sound.md5.indexOf('-modified') === -1) {
             sound.md5 = `${sound.md5}-modified`;
         }
-        
+
         this.audioBufferPlayer.stop();
         this.audioBufferPlayer = new AudioBufferPlayer(samples, this.props.sampleRate);
         const newBuffer = audioCtx.createBuffer(1, samples.length, this.props.sampleRate);
